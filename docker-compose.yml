@@ -2,6 +2,7 @@ version: '2'
 
 services:
   rabbitmq:
+    build: ./rabbitmq
     image: parunruaivo/taiga-rabbitmq
     container_name: rabbitmq
     restart: always
@@ -119,6 +120,7 @@ services:
       - back
 
   proxy:
+    build: ./taiga-proxy
     image: parunruaivo/taiga-proxy
     container_name: taiga-proxy
     restart: always
