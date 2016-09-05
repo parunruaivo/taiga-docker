@@ -1,0 +1,147 @@
+version: '2'
+
+services:
+  rabbitmq:
+    image: parunruaivo/taiga-rabbitmq
+    container_name: rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_USER=taiga
+      - RABBITMQ_PASS=taiga
+      - RABBITMQ_VHOST=taiga_celery,taiga_events
+    volumes:
+      - rabbitmq-volume:/var/lib/rabbitmq
+    networks:
+      - back
+
+  redis:
+    restart: always
+    image: sameersbn/redis:latest
+    container_name: redis
+    command:
+      - --loglevel warning
+    volumes:
+      - redis-volume:/var/lib/redis:Z
+    networks:
+      - back
+
+  postgresql:
+    restart: always
+    image: sameersbn/postgresql:9.5-1
+    container_name: postgresql
+    volumes:
+      - /srv/postgresql:/var/lib/postgresql:Z
+    environment:
+      - DB_USER=taiga_postgres
+      - DB_PASS=taiga
+      - DB_NAME=taiga_production
+      - DB_EXTENSION=pg_trgm
+    networks:
+      - back
+
+  taiga-back:
+    image: parunruaivo/taiga-back
+    container_name: taiga-back
+    restart: always
+    depends_on:
+      - postgresql
+      - redis
+      - rabbitmq
+    volumes:
+      - taiga-shared-media-volume:/home/taiga/taiga-back/media:rw
+      - taiga-shared-static-volume:/home/taiga/taiga-back/static:rw
+    environment:
+      - DEBUG=true
+
+      - DB_HOST=postgresql
+      - DB_PORT=5432
+      - DB_USER=taiga_postgres
+      - DB_PASS=taiga
+      - DB_NAME=taiga_production
+
+      - TAIGA_HTTPS=true
+      - TAIGA_HOST=taiga.127.0.0.1.xip.io
+      - TAIGA_SECRET_KEY=VH29ctspbPCGD8vL2Fs3b263wtDtTmJ5wMVkfVSdwZfBCT4cgHkp6CLGQnGGCGlw
+
+      - TAIGA_ROOT_USERNAME=taiga
+      - TAIGA_ROOT_EMAIL=taiga@example.com
+
+      - CELERY_ENABLED=true
+      - CELERY_AMQP_NAME=taiga_celery
+
+      - EVENTS_ENABLED=true
+      - EVENTS_AMQP_NAME=taiga_events
+
+      - AMQP_HOST=rabbitmq
+      - AMQP_PORT=5672
+      - AMQP_USER=taiga
+      - AMQP_PASS=taiga
+
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB_NUMBER=0
+
+    networks:
+      - back
+
+  taiga-front:
+    image: parunruaivo/taiga-front
+    container_name: taiga-front
+    restart: always
+    environment:
+      - EVENTS_ENABLED=true
+      - TAIGA_HTTPS=true
+      - TAIGA_HOST=taiga.127.0.0.1.xip.io
+      - DEBUG=false
+    volumes:
+      - taiga-shared-media-volume:/home/taiga/media:ro
+      - taiga-shared-static-volume:/home/taiga/static:ro
+    networks:
+      - front
+
+  taiga-events:
+    image: parunruaivo/taiga-events
+    container_name: taiga-events
+    restart: always
+    depends_on:
+      - rabbitmq
+    environment:
+      - EVENTS_ENABLED=true
+      - EVENTS_AMQP_NAME=taiga_events
+
+      - AMQP_HOST=rabbitmq
+      - AMQP_PORT=5672
+      - AMQP_USER=taiga
+      - AMQP_PASS=taiga
+
+      - TAIGA_SECRET_KEY=VH29ctspbPCGD8vL2Fs3b263wtDtTmJ5wMVkfVSdwZfBCT4cgHkp6CLGQnGGCGlw
+    networks:
+      - back
+
+  proxy:
+    image: parunruaivo/taiga-proxy
+    container_name: taiga-proxy
+    restart: always
+    ports:
+      - 80:80
+    depends_on:
+      - taiga-front
+      - taiga-back
+      - taiga-events
+    volumes:
+      - ./nginx/conf/:/etc/nginx/conf.d/
+    networks:
+      - front
+      - back
+
+networks:
+  back:
+    driver: bridge
+
+volumes:
+  redis-volume:
+  rabbitmq-volume:
+  taiga-shared-media-volume:
+  taiga-shared-static-volume:
+
+

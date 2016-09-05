@@ -1,0 +1,15 @@
+{
+    "api": "{{API_SCHEMA}}://{{TAIGA_HOST}}/api/v1/",
+    "eventsUrl": {{EVENTS_URL}},
+    "debug": {{DEBUG}},
+    "debugInfo": {{DEBUG}},
+    "defaultLanguage": "es",
+    "publicRegisterEnabled": {{PUBLIC_REGISTER_ENABLED}},
+    "feedbackEnabled": {{FEEDBACK_ENABLED}},
+    "privacyPolicyUrl": null,
+    "termsOfServiceUrl": null,
+    "maxUploadFileSize": null,
+    "contribPlugins": [
+        "/plugins/slack/slack.json"
+    ]
+}

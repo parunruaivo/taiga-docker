@@ -1,0 +1,7 @@
+{
+    "url": "amqp://{{AMQP_USER}}:{{AMQP_PASS}}@{{AMQP_HOST}}:{{AMQP_PORT}}/{{AMQP_NAME}}",
+    "secret": "{{TAIGA_SECRET_KEY}}",
+    "webSocketServer": {
+        "port": 80
+    }
+}

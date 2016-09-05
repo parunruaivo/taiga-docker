@@ -1,0 +1,9 @@
+#!/bin/bash
+
+TAIGA_SECRET_KEY=${TAIGA_SECRET_KEY:-secretkey}
+
+AMQP_HOST=${AMQP_HOST:-localhost}
+AMQP_PORT=${AMQP_PORT:-5672}
+AMQP_USER=${AMQP_USER:-guest}
+AMQP_PASS=${AMQP_PASS:-guest}
+AMQP_NAME=${AMQP_NAME:-taiga}

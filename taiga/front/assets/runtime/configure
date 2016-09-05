@@ -1,0 +1,90 @@
+#!/bin/bash
+
+source ${TAIGA_RUNTIME_DIR}/env-defaults
+
+TAIGA_CONFIG=${TAIGA_HOME}/taiga-front/dist/conf.json
+NGINX_CONFIG=/etc/nginx/conf.d/default.conf
+
+NGINX_PORT=${NGINX_PORT:-80}
+NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-_}
+
+EVENTS_URL=${EVENTS_URL:-null}
+API_SCHEMA=${API_SCHEMA:-http}
+
+
+## Replace placeholders with values
+# $1: file with placeholders to replace
+# $x: placeholders to replace
+update_template() {
+  local FILE=${1?missing argument}
+  shift
+
+  [[ ! -f ${FILE} ]] && return 1
+
+  local VARIABLES=($@)
+  local USR=$(stat -c %U ${FILE})
+  local tmp_file=$(mktemp)
+  cp -a "${FILE}" ${tmp_file}
+
+  local variable
+  for variable in ${VARIABLES[@]}; do
+    # Keep the compatibilty: {{VAR}} => ${VAR}
+    sed -ri "s/[{]{2}$variable[}]{2}/\${$variable}/g" ${tmp_file}
+  done
+
+  # Replace placeholders
+  (
+    export ${VARIABLES[@]}
+    local IFS=":"; envsubst "${VARIABLES[*]/#/$}" < ${tmp_file} > ${FILE}
+  )
+  rm -f ${tmp_file}
+}
+
+configure_taiga_events(){
+
+    if [ "$EVENTS_ENABLED" = true ]; then
+
+      EVENTS_URL="\"ws://$TAIGA_HOST/events\""
+
+      if [ "$TAIGA_HTTPS" = true ]; then
+        EVENTS_URL="\"wss://$TAIGA_HOST/events\""
+      fi
+
+    fi
+
+    update_template ${TAIGA_CONFIG} EVENTS_URL
+}
+
+configure_taiga_host(){
+
+     if [ "$TAIGA_HTTPS" = true ]; then
+        API_SCHEMA=https
+     fi
+
+    update_template ${TAIGA_CONFIG} TAIGA_HOST API_SCHEMA
+}
+
+configure_nginx(){
+
+    update_template ${NGINX_CONFIG} \
+        TAIGA_HOME \
+        NGINX_PORT \
+        NGINX_SERVER_NAME
+
+}
+
+configure_system(){
+
+    echo "Setting environment variables to docker.py"
+
+    configure_taiga_host
+    configure_taiga_events
+    configure_nginx
+
+    update_template ${TAIGA_CONFIG} \
+        DEBUG \
+        PUBLIC_REGISTER_ENABLED \
+        FEEDBACK_ENABLED
+
+}
+

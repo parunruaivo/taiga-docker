@@ -1,0 +1,115 @@
+#!/bin/bash
+
+source ${TAIGA_RUNTIME_DIR}/env-defaults
+
+TAIGA_DB_CONFIG=${TAIGA_RUNTIME_DIR}/checkdb.py
+
+TAIGA_CONFIG=${TAIGA_HOME}/taiga-back/settings/local.py
+TAIGA_ROOT_USER_CONFIG=${TAIGA_HOME}/taiga-back/taiga/users/fixtures/initial_user.json
+
+## Replace placeholders with values
+# $1: file with placeholders to replace
+# $x: placeholders to replace
+update_template() {
+  local FILE=${1?missing argument}
+  shift
+
+  [[ ! -f ${FILE} ]] && return 1
+
+  local VARIABLES=($@)
+  local USR=$(stat -c %U ${FILE})
+  local tmp_file=$(mktemp)
+  cp -a "${FILE}" ${tmp_file}
+
+  local variable
+  for variable in ${VARIABLES[@]}; do
+    # Keep the compatibilty: {{VAR}} => ${VAR}
+    sed -ri "s/[{]{2}$variable[}]{2}/\${$variable}/g" ${tmp_file}
+  done
+
+  # Replace placeholders
+  (
+    export ${VARIABLES[@]}
+    local IFS=":"; envsubst "${VARIABLES[*]/#/$}" < ${tmp_file} > ${FILE}
+  )
+  rm -f ${tmp_file}
+}
+
+configure_root_user(){
+
+    echo "Setting root user variables"
+
+    update_template ${TAIGA_ROOT_USER_CONFIG} \
+        TAIGA_ROOT_USERNAME \
+        TAIGA_ROOT_EMAIL
+}
+
+configure_db(){
+
+    echo "Setting environment variables to checkdb.py"
+
+    update_template ${TAIGA_DB_CONFIG} \
+        DB_USER \
+        DB_NAME \
+        DB_HOST \
+        DB_PORT \
+        DB_PASS
+}
+
+configure_taiga(){
+
+    echo "Setting environment variables to local.py"
+
+    update_template ${TAIGA_CONFIG} \
+        DEBUG \
+        DB_USER \
+        DB_NAME \
+        DB_HOST \
+        DB_PASS \
+        DB_PORT \
+        TAIGA_HOST \
+        TAIGA_HOME \
+        TAIGA_HTTPS \
+        TAIGA_SECRET_KEY \
+        DEFAULT_FROM_EMAIL \
+        EMAIL_ENABLED \
+        EMAIL_HOST \
+        EMAIL_USER \
+        EMAIL_PASS \
+        EMAIL_PORT \
+        EMAIL_USE_TLS \
+        CELERY_ENABLED \
+        CELERY_AMQP_NAME \
+        EVENTS_ENABLED \
+        EVENTS_AMQP_NAME \
+        AMQP_HOST \
+        AMQP_PORT \
+        AMQP_USER \
+        AMQP_PASS \
+        REDIS_HOST \
+        REDIS_PORT \
+        REDIS_DB_NUMBER \
+        PUBLIC_REGISTER_ENABLED \
+        STATS_ENABLED \
+        FRONT_SITEMAP_CACHE_TIMEOUT \
+        WEBHOOKS_ENABLED \
+        FRONT_SITEMAP_ENABLED \
+        FRONT_SITEMAP_CACHE_TIMEOUT \
+        TAIGA_ROOT_USERNAME \
+        TAIGA_ROOT_EMAIL \
+        GITHUB_ENABLED \
+        GITHUB_URL \
+        GITHUB_API_URL \
+        GITHUB_API_CLIENT_ID \
+        GITHUB_API_CLIENT_SECRET \
+        FEEDBACK_ENABLED \
+        FEEDBACK_EMAIL
+}
+
+configure_system(){
+
+    configure_db
+    configure_root_user
+    configure_taiga
+
+}
